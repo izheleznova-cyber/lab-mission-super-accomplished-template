@@ -5,6 +5,27 @@ import hashlib
 import os
 import json
 
+# 🟢 ЗАГРУЗКА ПЕРСОНАЛЬНЫХ ЗАДАНИЙ
+def load_student_tasks(name):
+    """Загружает задания студента"""
+    filename = f'student_tasks_{name}.json'
+    if os.path.exists(filename):
+        with open(filename, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return None
+
+# После получения имени студента:
+student_name = get_student_name()
+student_tasks = load_student_tasks(student_name)
+
+# Если заданий нет — генерируем
+if not student_tasks:
+    print("\n⚠️ Задания не найдены! Запустите task_generator.py")
+    print("   Или нажмите Enter для базового набора...")
+    input()
+    # Можно вызвать generate_student_tasks() напрямую
+
+
 # ----------------------------
 # 🟢 УВЕЛИЧЕННОЕ ПОЛЕ (в 2 раза!)
 # ----------------------------
