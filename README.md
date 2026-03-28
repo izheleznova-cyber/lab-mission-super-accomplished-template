@@ -71,16 +71,27 @@
 ### 🔹 Самостоятельная работа
 
 # 🎮 Mission Accomplished — Лабораторная работа
+## 📚 ИНСТРУКЦИЯ ДЛЯ СТУДЕНТОВ
 
-## 📚 Как получить задания
+###  Этап 1: В классе (Ubuntu)
 
-1. **Запустите генератор:**
+1. **Клонируйте репозиторий:**
    ```bash
-   python task_generator.py
+   git clone https://github.com/Python-Lab-Almaty/lab-mission-accomplished-ВАШ_НИК
+   cd lab-mission-accomplished-ВАШ_НИК
 
-Введите ваше имя (точно как в GitHub!)
-Выберите уровень (рекомендуется начать с 1)
-Сохраните файл student_tasks_{ваше_имя}.json
+   Установите зависимости: (выполните команды в терминале Ubuntu)
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+Выполните задания уровня ⭐ (см. task_generator.py) 
+
+
+Запустите игру:
+python game.py
+
+
 ---
 🎯 Система уровней
 Уровень          Заданий            Баллы                  Тема
