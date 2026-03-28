@@ -94,10 +94,15 @@ git status
 🏠 Этап 2: Дома (Colab)
 Откройте Google Colab:
 https://colab.research.google.com
-клоируйте свой репозиторий 
+клонируйте свой репозиторий 
 Загрузите log_analysis.ipynb из вашего репозитория
 Загрузите файлы log_*.json из репозитория в Colab:
 
+# В Google Colab установите только для анализа:
+!pip install pandas matplotlib jupyter
+
+# Загрузите log_analysis.ipynb и логи
+# Запустите анализ
 Запустите анализ:
 # В ячейке ноутбука:
 logs = load_logs("ваше_имя")
