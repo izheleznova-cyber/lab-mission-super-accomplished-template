@@ -4,34 +4,20 @@ import time
 import hashlib
 import os
 import json
-
-# 🟢 ЗАГРУЗКА ПЕРСОНАЛЬНЫХ ЗАДАНИЙ
-def load_student_tasks(name):
-    """Загружает задания студента"""
-    filename = f'student_tasks_{name}.json'
-    if os.path.exists(filename):
-        with open(filename, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return None
-
-# После получения имени студента:
-student_name = get_student_name()
-student_tasks = load_student_tasks(student_name)
-
-# Если заданий нет — генерируем
-if not student_tasks:
-    print("\n⚠️ Задания не найдены! Запустите task_generator.py")
-    print("   Или нажмите Enter для базового набора...")
-    input()
-    # Можно вызвать generate_student_tasks() напрямую
-
+import atexit
 
 # ----------------------------
 # 🟢 УВЕЛИЧЕННОЕ ПОЛЕ (в 2 раза!)
 # ----------------------------
 WIDTH, HEIGHT = 1200, 800
 
+# 🟢 ИНИЦИАЛИЗАЦИЯ ЛОГА
+log = []
+log_save_counter = 0
+
+# ----------------------------
 # 🟢 ПОЛУЧЕНИЕ ИМЕНИ СТУДЕНТА
+# ----------------------------
 def get_student_name():
     """Запрашивает имя студента и сохраняет для сессии"""
     screen = turtle.Screen()
@@ -40,7 +26,9 @@ def get_student_name():
         name = "anonymous"
     return name.strip().lower()
 
+# ----------------------------
 # 🟢 СОХРАНЕНИЕ/ЗАГРУЗКА ПОЗИЦИЙ
+# ----------------------------
 def get_positions_file(name):
     """Возвращает путь к файлу сохранения позиций"""
     return f"mission_positions_{name}.json"
@@ -50,7 +38,7 @@ def load_or_create_positions(name):
     filename = get_positions_file(name)
     
     if os.path.exists(filename):
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             data = json.load(f)
             print(f"✅ Загружена сохранённая сессия для {name}")
             return tuple(data['start']), tuple(data['goal']), data['obstacles']
@@ -85,7 +73,7 @@ def load_or_create_positions(name):
         (120, 120),  # большой квадрат
     ]
     
-    for i in range(8):  # 8 препятствий (больше поле = больше препятствий)
+    for i in range(8):  # 8 препятствий
         while True:
             x = random.randint(-450, 450)
             y = random.randint(-280, 280)
@@ -103,13 +91,13 @@ def load_or_create_positions(name):
                         obstacles.append((x, y, size))
                         break
     
-    with open(filename, 'w') as f:
+    with open(filename, 'w', encoding='utf-8') as f:
         json.dump({
             'start': start,
             'goal': goal,
             'obstacles': obstacles,
             'name': name
-        }, f)
+        }, f, indent=2)
     
     print(f"🎯 Создана новая сессия для {name} (seed: {seed})")
     return start, goal, obstacles
@@ -121,20 +109,52 @@ def clear_session(name):
         os.remove(filename)
         print(f"🗑️ Сессия {name} удалена")
 
-# 🟢 ИМЯ СТУДЕНТА
+# ----------------------------
+# 🟢 ФУНКЦИЯ СОХРАНЕНИЯ ЛОГА
+# ----------------------------
+def save_log(reason="end"):
+    """Сохраняет лог в файл с защитой от ошибок"""
+    global log, student_name, start, goal, impassable_obstacles, steps, penalties
+    
+    try:
+        filename = f"log_{student_name}_{int(time.time())}_{reason}.json"
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump({
+                "name": student_name,
+                "start": start,
+                "goal": goal,
+                "obstacles": impassable_obstacles,
+                "reason": reason,
+                "log": log,
+                "total_steps": steps,
+                "total_penalties": penalties,
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+            }, f, indent=2, ensure_ascii=False)
+        print(f"💾 Лог сохранён: {filename} ({len(log)} записей)")
+    except Exception as e:
+        print(f"❌ Ошибка сохранения лога: {e}")
+
+# 🟢 Регистрируем автосохранение при выходе
+atexit.register(lambda: save_log("exit"))
+
+# ----------------------------
+# 🟢 ИМЯ СТУДЕНТА (ОДИН РАЗ!)
+# ----------------------------
 student_name = get_student_name()
 start, goal, impassable_obstacles = load_or_create_positions(student_name)
 
+# ----------------------------
 # 🟢 ЭКРАН
+# ----------------------------
 screen = turtle.Screen()
 screen.setup(WIDTH, HEIGHT)
 screen.title(f"Red Riding Hood Mission - {student_name}")
 screen.bgcolor("white")
-
-# 🟢 ВАЖНО: Отключаем автоматическую анимацию для быстрой отрисовки
 screen.tracer(0)
 
+# ----------------------------
 # 🟢 ГЕРОЙ
+# ----------------------------
 hero = turtle.Turtle()
 hero.shape("circle")
 hero.color("red")
@@ -142,25 +162,31 @@ hero.penup()
 hero.goto(start)
 hero.shapesize(2, 2)
 
+# ----------------------------
 # 🟢 ПРЕПЯТСТВИЯ
-# Формат: [x, y, width, height, is_falling, fall_speed, final_y]
+# ----------------------------
 dynamic_obstacles = []
 
+# ----------------------------
 # 🟢 СЧЁТ
+# ----------------------------
 steps = 0
 penalties = 0
 
+# ----------------------------
 # 🟢 СКОРОСТЬ
+# ----------------------------
 vx = 3
 vy = 3
 
+# ----------------------------
 # 🟢 РЕЖИМ
+# ----------------------------
 going_forward = True
 
 # ----------------------------
-# ОТРИСОВКА
+# 🟢 ОТРИСОВКА
 # ----------------------------
-
 def draw_field_markers():
     """Рисует точки Start (A) и Finish (B)"""
     marker = turtle.Turtle()
@@ -199,11 +225,10 @@ def draw_rectangle(x, y, width, height, color):
     drawer.penup()
 
 def spawn_dynamic_obstacle():
-    """Создаёт препятствие в СЛУЧАЙНОМ МЕСТЕ (не только сверху!)"""
+    """Создаёт препятствие в случайном месте"""
     if going_forward:
         return
     
-    # 🟢 Появляется в случайном месте сверху или сбоку
     spawn_side = random.choice(['top', 'left', 'right'])
     
     if spawn_side == 'top':
@@ -212,14 +237,12 @@ def spawn_dynamic_obstacle():
     elif spawn_side == 'left':
         x = -WIDTH // 2 - 50
         y = random.randint(-300, 300)
-    else:  # right
+    else:
         x = WIDTH // 2 + 50
         y = random.randint(-300, 300)
     
     size = random.choice([(80, 80), (100, 60), (60, 100), (90, 90)])
     fall_speed = random.uniform(1.5, 3.0)
-    
-    # 🟢 Препятствие останавливается на случайной высоте
     final_y = random.randint(-200, 200)
     
     dynamic_obstacles.append([x, y, size[0], size[1], True, fall_speed, final_y])
@@ -227,15 +250,12 @@ def spawn_dynamic_obstacle():
 
 def draw_all():
     """Рисует ВСЁ: статичные препятствия, динамические, героя, счёт"""
-    
-    # 🟢 Очищаем только динамические элементы (не весь экран!)
     if hasattr(draw_all, 'dynamic_drawers'):
         for drawer in draw_all.dynamic_drawers:
             drawer.clear()
     else:
         draw_all.dynamic_drawers = []
     
-    # 🟢 Рисуем СТАТИЧНЫЕ красные препятствия (если ещё не нарисованы)
     if not hasattr(draw_all, 'static_drawn'):
         for ox, oy, (w, h) in impassable_obstacles:
             drawer = turtle.Turtle()
@@ -255,7 +275,6 @@ def draw_all():
             drawer.penup()
         draw_all.static_drawn = True
     
-    # 🟢 Рисуем ДИНАМИЧЕСКИЕ зелёные препятствия
     draw_all.dynamic_drawers = []
     for obs in dynamic_obstacles:
         x, y, w, h, is_falling, speed, final_y = obs
@@ -276,7 +295,6 @@ def draw_all():
         drawer.penup()
         draw_all.dynamic_drawers.append(drawer)
     
-    # 🟢 Рисуем счёт
     if hasattr(draw_all, 'score_drawer'):
         draw_all.score_drawer.clear()
     else:
@@ -288,27 +306,23 @@ def draw_all():
     score_drawer.goto(0, -HEIGHT//2 + 40)
     score = steps - penalties
     score_drawer.clear()
-    score_drawer.write(f"Steps: {steps} | Penalties: {penalties} | Score: {score}", 
+    score_drawer.write(f"Steps: {steps} | Penalties: {penalties} | Score: {score}",
                        align="center", font=("Arial", 16, "bold"))
     
-    # 🟢 Обновляем экран
     screen.update()
 
 def rect_collision(hero_x, hero_y, rect_x, rect_y, rect_w, rect_h, hero_radius=15):
     """Проверяет столкновение круга с прямоугольником"""
     closest_x = max(rect_x - rect_w/2, min(hero_x, rect_x + rect_w/2))
     closest_y = max(rect_y - rect_h/2, min(hero_y, rect_y + rect_h/2))
-    
     distance_x = hero_x - closest_x
     distance_y = hero_y - closest_y
     distance = (distance_x**2 + distance_y**2) ** 0.5
-    
     return distance < hero_radius
 
 def check_collision():
     """Проверяет столкновения"""
     global penalties
-    
     for ox, oy, (w, h) in impassable_obstacles:
         if rect_collision(hero.xcor(), hero.ycor(), ox, oy, w, h, hero_radius=15):
             penalties += 10
@@ -324,28 +338,75 @@ def check_collision():
     return "ok"
 
 # ----------------------------
-# УПРАВЛЕНИЕ
+# 🟢 УПРАВЛЕНИЕ (с логированием)
 # ----------------------------
-
 def up():
-    global steps
+    global steps, log_save_counter
     hero.sety(hero.ycor() + vy)
     steps += 1
+    log_save_counter += 1
+    
+    log.append({
+        "event": "move",
+        "direction": "up",
+        "x": hero.xcor(),
+        "y": hero.ycor(),
+        "time": time.time()
+    })
+    
+    if log_save_counter % 100 == 0:
+        save_log(f"checkpoint_{log_save_counter}")
 
 def down():
-    global steps
+    global steps, log_save_counter
     hero.sety(hero.ycor() - vy)
     steps += 1
+    log_save_counter += 1
+    
+    log.append({
+        "event": "move",
+        "direction": "down",
+        "x": hero.xcor(),
+        "y": hero.ycor(),
+        "time": time.time()
+    })
+    
+    if log_save_counter % 100 == 0:
+        save_log(f"checkpoint_{log_save_counter}")
 
 def left():
-    global steps
+    global steps, log_save_counter
     hero.setx(hero.xcor() - vx)
     steps += 1
+    log_save_counter += 1
+    
+    log.append({
+        "event": "move",
+        "direction": "left",
+        "x": hero.xcor(),
+        "y": hero.ycor(),
+        "time": time.time()
+    })
+    
+    if log_save_counter % 100 == 0:
+        save_log(f"checkpoint_{log_save_counter}")
 
 def right():
-    global steps
+    global steps, log_save_counter
     hero.setx(hero.xcor() + vx)
     steps += 1
+    log_save_counter += 1
+    
+    log.append({
+        "event": "move",
+        "direction": "right",
+        "x": hero.xcor(),
+        "y": hero.ycor(),
+        "time": time.time()
+    })
+    
+    if log_save_counter % 100 == 0:
+        save_log(f"checkpoint_{log_save_counter}")
 
 def reset_session():
     clear_session(student_name)
@@ -363,14 +424,21 @@ screen.onkey(right, "d")
 screen.onkey(reset_session, "r")
 
 # ----------------------------
-# ОСНОВНОЙ ЦИКЛ
+# 🟢 ОСНОВНОЙ ЦИКЛ
 # ----------------------------
-
 draw_field_markers()
 screen.update()
 
 obstacles_spawned_count = 0
 start_time = time.time()
+
+# 🟢 ЛОГИРОВАНИЕ СТАРТА
+log.append({
+    "event": "game_start",
+    "x": hero.xcor(),
+    "y": hero.ycor(),
+    "time": time.time()
+})
 
 print(f"\n🎮 ИГРА ЗАПУЩЕНА")
 print(f"👤 Студент: {student_name}")
@@ -392,19 +460,25 @@ while True:
             spawn_dynamic_obstacle()
             obstacles_spawned_count += 1
         
-        # 🟢 Двигаем препятствия к их финальной позиции
         for obs in dynamic_obstacles:
-            if obs[4]:  # is_falling
-                if obs[1] > obs[6]:  # если выше final_y
-                    obs[1] -= obs[5]  # y -= fall_speed
+            if obs[4]:
+                if obs[1] > obs[6]:
+                    obs[1] -= obs[5]
                 else:
-                    obs[4] = False  # 🟢 Останавливаем!
+                    obs[4] = False
     
     # Проверка достижения цели
     if going_forward and abs(hero.xcor() - goal[0]) < 40 and abs(hero.ycor() - goal[1]) < 40:
         print("🎯 Reached B! RETURN TO A!")
         print(f"🟢 Теперь будут появляться препятствия!")
         going_forward = False
+        
+        log.append({
+            "event": "reached_goal_B",
+            "x": hero.xcor(),
+            "y": hero.ycor(),
+            "time": time.time()
+        })
     
     # Проверка возвращения
     if not going_forward and abs(hero.xcor() - start[0]) < 40 and abs(hero.ycor() - start[1]) < 40:
@@ -417,14 +491,23 @@ while True:
         print(f"📊 Final Score: {final_score}")
         print(f"🟩 Препятствий появилось: {obstacles_spawned_count}")
         
-        with open(f"mission_records_{student_name}.json", 'w') as f:
+        log.append({
+            "event": "mission_complete",
+            "x": hero.xcor(),
+            "y": hero.ycor(),
+            "time": time.time(),
+            "score": final_score
+        })
+        
+        with open(f"mission_records_{student_name}.json", 'w', encoding='utf-8') as f:
             json.dump({
                 'score': final_score,
                 'time': total_time,
                 'steps': steps,
                 'date': time.strftime("%Y-%m-%d %H:%M:%S")
-            }, f)
+            }, f, indent=2)
         
+        save_log("mission_complete")
         break
     
     # Столкновение
@@ -432,11 +515,18 @@ while True:
     if collision == "game_over":
         print("💥 GAME OVER!")
         print(f"🟩 Препятствий: {obstacles_spawned_count}")
+        
+        log.append({
+            "event": "game_over",
+            "x": hero.xcor(),
+            "y": hero.ycor(),
+            "time": time.time()
+        })
+        
+        save_log("game_over")
         break
     
-    # 🟢 Отрисовка ВСЕГО (без следов!)
     draw_all()
-    
     time.sleep(0.03)
 
 turtle.done()
