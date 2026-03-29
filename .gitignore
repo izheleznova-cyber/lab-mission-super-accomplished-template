@@ -6,7 +6,6 @@ venv/
 # 🎮 Персональные файлы (не коммитить!)
 mission_positions_*.json
 mission_records_*.json
-student_tasks_*.json
 log_*.json
 
 # 🎮 Персональные файлы
