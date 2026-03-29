@@ -48,10 +48,10 @@ def load_or_create_positions(name):
     random.seed(seed)
     
     corners = [
-        (-550, -350),  # левый нижний
-        (550, 350),    # правый верхний
-        (-550, 350),   # левый верхний
-        (550, -350)    # правый нижний
+        (-550, -350),
+        (550, 350),
+        (-550, 350),
+        (550, -350)
     ]
     
     diagonal_pairs = [(0, 1), (2, 3)]
@@ -62,14 +62,7 @@ def load_or_create_positions(name):
     goal = corners[goal_idx]
     
     obstacles = []
-    sizes = [
-        (60, 150),   # узкий высокий
-        (150, 60),   # широкий низкий
-        (100, 100),  # квадрат
-        (80, 200),   # высокий
-        (200, 80),   # широкий
-        (120, 120),  # большой квадрат
-    ]
+    sizes = [(60, 150), (150, 60), (100, 100), (80, 200), (200, 80), (120, 120)]
     
     for i in range(8):
         while True:
@@ -108,7 +101,7 @@ def clear_session(name):
         print(f"🗑️ Сессия {name} удалена")
 
 # ----------------------------
-# 🟢 ФУНКЦИЯ СОХРАНЕНИЯ ЛОГА (ЕДИНСТВЕННАЯ!)
+# 🟢 ФУНКЦИЯ СОХРАНЕНИЯ ЛОГА
 # ----------------------------
 def save_log(reason="end"):
     """Сохраняет лог в файл с защитой от ошибок"""
@@ -126,16 +119,14 @@ def save_log(reason="end"):
                 "log": log,
                 "total_steps": steps,
                 "total_penalties": penalties,
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "game_version": "1.0",  # 🟢 Для отслеживания версий
-                "seed": seed if 'seed' in globals() else "unknown"  # 🟢 Для воспроизводимости
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
             }, f, indent=2, ensure_ascii=False)
         print(f"💾 Лог сохранён: {filename} ({len(log)} записей)")
     except Exception as e:
         print(f"❌ Ошибка сохранения лога: {e}")
 
 # 🟢 Регистрируем автосохранение при выходе
-# atexit.register(lambda: save_log("exit"))
+atexit.register(lambda: save_log("exit"))
 
 # ----------------------------
 # 🟢 ИМЯ СТУДЕНТА (ОДИН РАЗ!)
@@ -192,34 +183,19 @@ def draw_field_markers():
     marker = turtle.Turtle()
     marker.hideturtle()
     marker.penup()
+    
     marker.goto(start)
     marker.dot(50, "green")
     marker.goto(start[0], start[1] - 50)
     marker.write("A (Start)", align="center", font=("Arial", 16, "bold"))
+    
     marker.goto(goal)
     marker.dot(50, "blue")
     marker.goto(goal[0], goal[1] - 50)
     marker.write("B (Finish)", align="center", font=("Arial", 16, "bold"))
+    
     marker.goto(0, HEIGHT//2 - 60)
     marker.write(f"Student: {student_name}", align="center", font=("Arial", 14, "italic"))
-
-def draw_rectangle(x, y, width, height, color):
-    """Рисует прямоугольник с центром в (x, y)"""
-    drawer = turtle.Turtle()
-    drawer.hideturtle()
-    drawer.penup()
-    drawer.speed(0)
-    drawer.goto(x - width/2, y - height/2)
-    drawer.pendown()
-    drawer.fillcolor(color)
-    drawer.begin_fill()
-    for _ in range(2):
-        drawer.forward(width)
-        drawer.left(90)
-        drawer.forward(height)
-        drawer.left(90)
-    drawer.end_fill()
-    drawer.penup()
 
 def spawn_dynamic_obstacle():
     """Создаёт препятствие в случайном месте"""
@@ -306,31 +282,6 @@ def draw_all():
                        align="center", font=("Arial", 16, "bold"))
     
     screen.update()
-    # 🟢 Индикатор уровня опасности (на обратном пути)
-if not going_forward:
-    danger_turtle = draw_all.get('danger_turtle') if hasattr(draw_all, 'danger_turtle') else None
-    if not danger_turtle:
-        danger_turtle = turtle.Turtle()
-        danger_turtle.hideturtle()
-        danger_turtle.penup()
-        draw_all.danger_turtle = danger_turtle
-    
-    danger_turtle.clear()
-    danger_turtle.goto(0, HEIGHT//2 - 100)
-    
-    # Цвет зависит от скорости
-    if (vx + vy) >= 8:
-        danger_color = "red"
-        danger_text = "⚠️ ОПАСНОСТЬ: ВЫСОКАЯ!"
-    elif (vx + vy) >= 5:
-        danger_color = "orange"
-        danger_text = "⚠️ ОПАСНОСТЬ: СРЕДНЯЯ"
-    else:
-        danger_color = "green"
-        danger_text = "✅ ОПАСНОСТЬ: НИЗКАЯ"
-    
-    danger_turtle.write(danger_text, align="center", font=("Arial", 14, "bold"))
-    danger_turtle.fillcolor(danger_color)
 
 def rect_collision(hero_x, hero_y, rect_x, rect_y, rect_w, rect_h, hero_radius=15):
     """Проверяет столкновение круга с прямоугольником"""
@@ -359,14 +310,14 @@ def check_collision():
     return "ok"
 
 # ----------------------------
-# 🟢 УПРАВЛЕНИЕ
+# 🟢 УПРАВЛЕНИЕ (с логированием)
 # ----------------------------
 def up():
-    global steps
+    global steps, log_save_counter
     hero.sety(hero.ycor() + vy)
     steps += 1
+    log_save_counter += 1
     
-    # ✅ Только добавляем в память
     log.append({
         "event": "move",
         "direction": "up",
@@ -374,9 +325,12 @@ def up():
         "y": hero.ycor(),
         "time": time.time()
     })
+    
+    if log_save_counter % 100 == 0:
+        save_log(f"checkpoint_{log_save_counter}")
 
 def down():
-    global steps, log_save_counter, log
+    global steps, log_save_counter
     hero.sety(hero.ycor() - vy)
     steps += 1
     log_save_counter += 1
@@ -389,8 +343,11 @@ def down():
         "time": time.time()
     })
     
+    if log_save_counter % 100 == 0:
+        save_log(f"checkpoint_{log_save_counter}")
+
 def left():
-    global steps, log_save_counter, log
+    global steps, log_save_counter
     hero.setx(hero.xcor() - vx)
     steps += 1
     log_save_counter += 1
@@ -403,8 +360,11 @@ def left():
         "time": time.time()
     })
     
+    if log_save_counter % 100 == 0:
+        save_log(f"checkpoint_{log_save_counter}")
+
 def right():
-    global steps, log_save_counter, log
+    global steps, log_save_counter
     hero.setx(hero.xcor() + vx)
     steps += 1
     log_save_counter += 1
@@ -417,6 +377,9 @@ def right():
         "time": time.time()
     })
     
+    if log_save_counter % 100 == 0:
+        save_log(f"checkpoint_{log_save_counter}")
+
 def reset_session():
     clear_session(student_name)
     print("🔄 Сессия сброшена. Перезапустите игру.")
@@ -454,44 +417,27 @@ print(f"👤 Студент: {student_name}")
 print(f"📍 Start: {start}")
 print(f"🎯 Goal: {goal}")
 print(f"⚠️ Препятствий: {len(impassable_obstacles)}")
-print(f"🚀 Скорость героя: {vx + vy} (влияет на спавн препятствий!)")
 print(f"\n🎯 Цель: A → B → A")
 print(f"⌨️ Управление: стрелки или WASD")
 print(f"🔄 Сброс: R")
 print(f"\n🔴 КРАСНЫЕ = штраф -10")
 print(f"🟢 ЗЕЛЁНЫЕ = GAME OVER (появляются на обратном пути)")
-print(f"⚡ ЧЕМ БЫСТРЕЕ ДВИЖЕШЬСЯ = ТЕМ ЧАЩЕ ПРЕПЯТСТВИЯ!")
 
 while True:
-    # 🟢 ФАЗА 2: На обратном пути начинается хаос
+    # 🟢 ФАЗА 2: На обратном пути
     if not going_forward:
-        # 🟢 НОВАЯ ФОРМУЛА: Зависимость от скорости героя
-        base_chance = 0.02
-        speed_multiplier = (vx + vy) / 20  # Чем больше скорость = тем выше шанс
-        spawn_chance = min(base_chance + speed_multiplier, 0.15)  # Максимум 15%
+        spawn_chance = 0.02 + (vx + vy) / 60
         
         if random.random() < spawn_chance and len(dynamic_obstacles) < 15:
             spawn_dynamic_obstacle()
             obstacles_spawned_count += 1
-            
-            # 🟢 Логирование для анализа
-            log.append({
-                "event": "obstacle_spawned",
-                "total_obstacles": len(dynamic_obstacles),
-                "hero_vx": vx,
-                "hero_vy": vy,
-                "spawn_chance": round(spawn_chance, 3),
-                "time": time.time()
-            })
         
-        # Двигаем препятствия
         for obs in dynamic_obstacles:
             if obs[4]:
                 if obs[1] > obs[6]:
                     obs[1] -= obs[5]
                 else:
                     obs[4] = False
-    
     
     # Проверка достижения цели
     if going_forward and abs(hero.xcor() - goal[0]) < 40 and abs(hero.ycor() - goal[1]) < 40:
