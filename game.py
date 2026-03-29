@@ -4,22 +4,20 @@ import time
 import hashlib
 import os
 import json
-import atexit
 
 # ----------------------------
-# 🟢 УВЕЛИЧЕННОЕ ПОЛЕ
+# 🟢 КОНСТАНТЫ
 # ----------------------------
 WIDTH, HEIGHT = 1200, 800
 
 # 🟢 ИНИЦИАЛИЗАЦИЯ ЛОГА
 log = []
-log_save_counter = 0
 
 # ----------------------------
 # 🟢 ПОЛУЧЕНИЕ ИМЕНИ СТУДЕНТА
 # ----------------------------
 def get_student_name():
-    """Запрашивает имя студента и сохраняет для сессии"""
+    """Запрашивает имя студента"""
     screen = turtle.Screen()
     name = screen.textinput("Student Name", "Enter your name:")
     if not name or name.strip() == "":
@@ -47,13 +45,7 @@ def load_or_create_positions(name):
     seed = int(name_hash[:8], 16) % 10000
     random.seed(seed)
     
-    corners = [
-        (-550, -350),
-        (550, 350),
-        (-550, 350),
-        (550, -350)
-    ]
-    
+    corners = [(-550, -350), (550, 350), (-550, 350), (550, -350)]
     diagonal_pairs = [(0, 1), (2, 3)]
     pair_index = seed % 2
     start_idx, goal_idx = diagonal_pairs[pair_index]
@@ -101,14 +93,16 @@ def clear_session(name):
         print(f"🗑️ Сессия {name} удалена")
 
 # ----------------------------
-# 🟢 ФУНКЦИЯ СОХРАНЕНИЯ ЛОГА
+# 🟢 ФУНКЦИЯ СОХРАНЕНИЯ ЛОГА (ОДИН ФАЙЛ!)
 # ----------------------------
 def save_log(reason="end"):
-    """Сохраняет лог в файл с защитой от ошибок"""
+    """Сохраняет ВСЕ логи в ОДИН файл (перезаписывает старый)"""
     global log, student_name, start, goal, impassable_obstacles, steps, penalties
     
     try:
-        filename = f"log_{student_name}_{int(time.time())}_{reason}.json"
+        # 🟢 ОДИН файл на студента (всегда перезаписывается!)
+        filename = f"log_{student_name}.json"
+        
         with open(filename, "w", encoding="utf-8") as f:
             json.dump({
                 "name": student_name,
@@ -116,20 +110,19 @@ def save_log(reason="end"):
                 "goal": goal,
                 "obstacles": impassable_obstacles,
                 "reason": reason,
-                "log": log,
+                "log": log,  # Все события в одном массиве
                 "total_steps": steps,
                 "total_penalties": penalties,
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "game_version": "1.0"
             }, f, indent=2, ensure_ascii=False)
+        
         print(f"💾 Лог сохранён: {filename} ({len(log)} записей)")
     except Exception as e:
         print(f"❌ Ошибка сохранения лога: {e}")
 
-# 🟢 Регистрируем автосохранение при выходе
-atexit.register(lambda: save_log("exit"))
-
 # ----------------------------
-# 🟢 ИМЯ СТУДЕНТА (ОДИН РАЗ!)
+# 🟢 ИНИЦИАЛИЗАЦИЯ ИГРЫ
 # ----------------------------
 student_name = get_student_name()
 start, goal, impassable_obstacles = load_or_create_positions(student_name)
@@ -310,13 +303,12 @@ def check_collision():
     return "ok"
 
 # ----------------------------
-# 🟢 УПРАВЛЕНИЕ (с логированием)
+# 🟢 УПРАВЛЕНИЕ (БЕЗ ЧЕКПОИНТОВ!)
 # ----------------------------
 def up():
-    global steps, log_save_counter
+    global steps
     hero.sety(hero.ycor() + vy)
     steps += 1
-    log_save_counter += 1
     
     log.append({
         "event": "move",
@@ -325,15 +317,11 @@ def up():
         "y": hero.ycor(),
         "time": time.time()
     })
-    
-    if log_save_counter % 100 == 0:
-        save_log(f"checkpoint_{log_save_counter}")
 
 def down():
-    global steps, log_save_counter
+    global steps
     hero.sety(hero.ycor() - vy)
     steps += 1
-    log_save_counter += 1
     
     log.append({
         "event": "move",
@@ -342,15 +330,11 @@ def down():
         "y": hero.ycor(),
         "time": time.time()
     })
-    
-    if log_save_counter % 100 == 0:
-        save_log(f"checkpoint_{log_save_counter}")
 
 def left():
-    global steps, log_save_counter
+    global steps
     hero.setx(hero.xcor() - vx)
     steps += 1
-    log_save_counter += 1
     
     log.append({
         "event": "move",
@@ -359,15 +343,11 @@ def left():
         "y": hero.ycor(),
         "time": time.time()
     })
-    
-    if log_save_counter % 100 == 0:
-        save_log(f"checkpoint_{log_save_counter}")
 
 def right():
-    global steps, log_save_counter
+    global steps
     hero.setx(hero.xcor() + vx)
     steps += 1
-    log_save_counter += 1
     
     log.append({
         "event": "move",
@@ -376,9 +356,6 @@ def right():
         "y": hero.ycor(),
         "time": time.time()
     })
-    
-    if log_save_counter % 100 == 0:
-        save_log(f"checkpoint_{log_save_counter}")
 
 def reset_session():
     clear_session(student_name)
@@ -479,7 +456,7 @@ while True:
                 'date': time.strftime("%Y-%m-%d %H:%M:%S")
             }, f, indent=2)
         
-        save_log("mission_complete")
+        save_log("mission_complete")  # ✅ ОДИН РАЗ В КОНЦЕ!
         break
     
     # Столкновение
@@ -495,7 +472,7 @@ while True:
             "time": time.time()
         })
         
-        save_log("game_over")
+        save_log("game_over")  # ✅ ОДИН РАЗ ПРИ GAME OVER!
         break
     
     draw_all()
