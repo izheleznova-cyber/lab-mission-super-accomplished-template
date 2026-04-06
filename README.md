@@ -104,18 +104,6 @@ analyze_performance(logs)
 * изменённый `game.py`
 * краткий отчёт (my_report.txt)
 
-## 🏠 Для студентов на дистанционном обучении
-
-Если вы не присутствовали на занятии в классе:
-
-1. **Получите готовые файлы:**
-   - `log_{ваше_имя}.json` — лог игры (преподаватель предоставит)
-   - `colab_tasks_{ваше_имя}.json` — ваши задания
-
-2. **Откройте Google Colab:**
-   - Загрузите `log_analysis.ipynb`
-   - Загрузите ваши файлы логов и заданий
-
 3. **Выполните анализ** согласно вашему уровню:
    - 🟢 Level 1: Базовый анализ (60-70 баллов)
    - 🟡 Level 2: Анализ маршрута (75-85 баллов)
@@ -127,8 +115,6 @@ analyze_performance(logs)
    git add log_analysis.ipynb
    git commit -m "Add Colab analysis for [ваше_имя]"
    git push origin main
-
-
 
 
 Commit message:

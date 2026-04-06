@@ -53,10 +53,10 @@
     },
     {
       "id": "2.2",
-      "title": "Добавить сетку на поле",
-      "description": "Нарисуй сетку с шагом 100 пикселей",
-      "hint": "Создай функцию draw_grid() и вызови в draw_all()",
-      "code_pattern": "def draw_grid",
+      "title": "Изменить размер игрового поля",
+      "description": "Увеличь поле с 1200x800 до 1400x900 пикселей",
+      "hint": "Ищи: WIDTH, HEIGHT = 1200, 800",
+      "code_pattern": "WIDTH\\s*=\\s*1400",
       "points": 10
     },
     {
